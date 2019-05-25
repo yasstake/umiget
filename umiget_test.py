@@ -7,6 +7,8 @@ INVENTRY_JSON='''
 '''
 
 class MyTestCase(unittest.TestCase):
+
+
     def test_umi_login(self):
         umi = Umi()
         umi.login()
@@ -25,18 +27,77 @@ class MyTestCase(unittest.TestCase):
         umi = Umi()
         print(umi.parse_inventory(INVENTRY_JSON))
 
-
-
-
-
     def test_get_lights(self):
-        umi = Umi()
         umi = Umi()
         umi.login()
 
-        print(umi.get_light_house())
+        print(umi.get_light_house(False))
 
+    def test_get_light_house(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_light_house(False)
+        print(r)
 
+    def test_get_float_lights(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_float_lights(False)
+        print(r)
+
+    def test_get_pillar_lights(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_pillar_lights(False)
+        print(r)
+
+    def test_get_other_lights(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_other_lights(False)
+        print(r)
+
+    def test_get_traffic_route_major(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_traffic_route_major(False)
+        print(r)
+
+    def test_get_traffic_route_minor(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_traffic_route_minor(False)
+        print(r)
+
+    def test_get_fisher(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_fisher(False)
+        print(r)
+
+    def test_get_fisher_fix_net(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_fisher_fix_net(False)
+        print(r)
+
+    def test_get_marina(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_marina(False)
+        print(r)
+
+    def test_get_swimming_beach(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_swimming_beach(False)
+        print(r)
+
+    def test_get_tide_probe(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_tide_probe(False)
+        print(r)
 
 
 
