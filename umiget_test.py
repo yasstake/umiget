@@ -33,6 +33,12 @@ class MyTestCase(unittest.TestCase):
 
         print(umi.get_light_house(False))
 
+    def test_get_obstacle(self):
+        self.umi = Umi()
+        self.umi.login()
+        r = self.umi.get_obstacle(False)
+        print(r)
+
     def test_get_light_house(self):
         self.umi = Umi()
         self.umi.login()

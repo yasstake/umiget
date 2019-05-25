@@ -72,13 +72,19 @@ class Umi:
 
         return extents, field
 
-    def query_data(self, path, loop = True):
+    def query_data(self, path, loop = True, all_data=True, query_extent=None):
         r = self.get_inventory(path)
         extent, fields = self.parse_inventory(r.text)
 
+        if query_extent:
+            extent = query_extent
+
         params = {}
         params['geometry'] = ",".join(map(str, extent))
-        params['outFields']= ",".join(map(str, fields))
+        if all_data:
+            params['outFields']= ",".join(map(str, fields))
+        print(extent)
+        print(fields)
 
         result  = None
 
@@ -99,11 +105,24 @@ class Umi:
                         if len(features) != 0:
                             result['features'].extend(features)
         else:
-            print(extent)
+
             r = self.get(path + '/query', params, True)
+            print(r)
             result = r.json()
 
         return result
+
+
+    def get_obstacle(self, loop = True):
+        '''
+        海底障害物
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('Maritime/MapServer/9', loop, False)
+        print(r)
+
+        return r
 
 
     def get_light_house(self, loop = True):
