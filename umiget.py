@@ -1,6 +1,7 @@
 from requests_html import HTMLSession
 import urllib
 import json
+from time import sleep
 '''
 See request_html docummentation at;
 https://html.python-requests.org/
@@ -81,8 +82,24 @@ class Umi:
         params['geometry'] = ",".join(map(str, extent))
         params['outFields']= ",".join(map(str, fields))
 
-        r = self.get(path + '/query', params, True)
+        result  = None
+        for x in range(int(extent[0]), int(extent[2])+2):
+            for y in range(int(extent[1]), int(extent[3])+2):
+                print(x, y)
 
+                sleep(0.5)
+                params['geometry'] = ",".join(map(str, (x, y, x+1, y+1)))
+                r = self.get(path + '/query', params, True)
+
+                if result is None:
+                    result = r.json()
+                else:
+                    features = r.json()['features']
+
+                    if len(features) != 0:
+                        result['features'].extend(features)
+
+        return result
 
 
     def get_light_house(self):
