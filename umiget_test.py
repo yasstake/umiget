@@ -32,7 +32,7 @@ class MyTestCase(unittest.TestCase):
         umi = Umi()
         umi.login()
 
-        print(umi.get_light_house(False))
+        print(umi.get_light_house(True))
         umi.logout()
 
     def test_get_obstacle(self):

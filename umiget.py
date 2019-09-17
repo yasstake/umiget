@@ -73,29 +73,31 @@ class Umi:
 
         return extents, field
 
-    def query_data(self, path, loop = True, all_data=True, query_extent=None):
+    AREA_SIZE = 10
+
+    def query_data(self, path, loop=True, all_data=True, query_extent=None):
         r = self.get_inventory(path)
         extent, fields = self.parse_inventory(r.text)
 
         if query_extent:
             extent = query_extent
 
+        print(extent)
+
         params = {}
         params['geometry'] = ",".join(map(str, extent))
         if all_data:
             params['outFields']= ",".join(map(str, fields))
-        print(extent)
-        print(fields)
 
-        result  = None
+        result = None
 
         if loop:
-            for x in range(int(extent[0]), int(extent[2])+2):
-                for y in range(int(extent[1]), int(extent[3])+2):
+            for x in range(int(extent[0]), int(extent[2])+Umi.AREA_SIZE, Umi.AREA_SIZE):
+                for y in range(int(extent[1]), int(extent[3])+Umi.AREA_SIZE, Umi.AREA_SIZE):
                     print(x, y)
 
                     sleep(0.5)
-                    params['geometry'] = ",".join(map(str, (x, y, x+1, y+1)))
+                    params['geometry'] = ",".join(map(str, (x, y, x+Umi.AREA_SIZE, y+Umi.AREA_SIZE)))
                     r = self.get(path + '/query', params, True)
 
                     if result is None:
@@ -106,9 +108,7 @@ class Umi:
                         if len(features) != 0:
                             result['features'].extend(features)
         else:
-
             r = self.get(path + '/query', params, True)
-            print(r)
             result = r.json()
 
         return result
@@ -123,7 +123,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/9', loop, False)
-        print(r)
 
         return r
 
@@ -135,7 +134,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/15', loop)
-        print(r)
 
         return r
 
@@ -146,7 +144,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/16', loop)
-        print(r)
 
         return r
 
@@ -157,7 +154,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/17', loop)
-        print(r)
 
         return r
 
@@ -169,7 +165,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/18', loop)
-        print(r)
 
         return r
 
@@ -181,7 +176,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/20', loop)
-        print(r)
 
         return r
 
@@ -193,7 +187,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/21', loop)
-        print(r)
 
         return r
 
@@ -205,7 +198,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Maritime/MapServer/32', loop)
-        print(r)
 
         return r
 
@@ -216,7 +208,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Society/MapServer/7', loop)
-        print(r)
 
         return r
 
@@ -227,7 +218,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Society/MapServer/5', loop)
-        print(r)
 
         return r
 
@@ -239,7 +229,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Society/MapServer/3', loop)
-        print(r)
 
         return r
 
@@ -250,7 +239,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Ocean/MapServer/184', loop)
-        print(r)
 
         return r
 
@@ -261,7 +249,6 @@ class Umi:
         :return:
         '''
         r = self.query_data('Safety/MapServer/0', loop)
-        print(r)
 
         return r
 
