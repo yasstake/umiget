@@ -1,3 +1,4 @@
+
 from requests_html import HTMLSession
 import urllib
 import json
@@ -112,6 +113,8 @@ class Umi:
 
         return result
 
+    def logout(self):
+        self.session.close()
 
     def get_obstacle(self, loop = True):
         '''
@@ -231,7 +234,7 @@ class Umi:
 
     def get_swimming_beach(self, loop = True):
         '''
-        マリーナ
+        海水浴場
         :param loop:
         :return:
         '''
@@ -239,7 +242,6 @@ class Umi:
         print(r)
 
         return r
-
 
     def get_tide_probe(self, loop = True):
         '''
@@ -251,4 +253,16 @@ class Umi:
         print(r)
 
         return r
+
+    def get_safety_notice(self, loop=True):
+        '''
+        海上安全通報
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('Safety/MapServer/0', loop)
+        print(r)
+
+        return r
+
 
