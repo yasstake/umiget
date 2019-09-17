@@ -8,6 +8,9 @@ See request_html docummentation at;
 https://html.python-requests.org/
 '''
 
+#https://github.com/chris48s/arcgis2geojson
+#pip install arcgis2geojson
+from arcgis2geojson import arcgis2geojson
 
 class Umi:
     LAYER_LIST = 'https://www.msil.go.jp/msilgisapi/api/layer/layer'
@@ -241,9 +244,16 @@ class Umi:
         :param loop:
         :return:
         '''
-        r = self.query_data('Safety/MapServer/0', loop)
+        r = self.query_data('SafetyInfo1/MapServer/4', loop)
 
         return r
+
+
+    '''
+    SafetyInfo1/MapServer/4  水路通報
+    
+    '''
+
 
     @staticmethod
     def save_info(data_name):
@@ -251,6 +261,7 @@ class Umi:
         umi.login()
 
         r = eval('umi.get_' + data_name + '(True)')
+        r = arcgis2geojson(r)
         with open('data/' + data_name + '.json', mode='w', encoding='utf-8') as f:
             f.write(json.dumps(r, ensure_ascii=False))
 
@@ -258,6 +269,7 @@ class Umi:
 
 
 if __name__ == '__main__':
+
     Umi.save_info('obstacle')
     Umi.save_info('light_house')
     Umi.save_info('float_lights')
@@ -269,8 +281,9 @@ if __name__ == '__main__':
     Umi.save_info('fisher_fix_net')
     Umi.save_info('marina')
     Umi.save_info('swimming_beach')
+   #Umi.save_info('safety_notice')
 #    Umi.save_info('tide_probe')
-#    Umi.save_info('safety_notice')
+
 
 
 
