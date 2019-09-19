@@ -37,13 +37,13 @@ class Umi:
             params['token'] = self.token
 
         params['f'] = 'json'
+        params['inSR'] = '4326'
+        params['outSR'] = '4326'
 
         if query:
             params['returnGeometry'] = 'true'
             params['spatialRel'] = 'esriSpatialRelIntersects'
             params['geometryType'] = 'esriGeometryEnvelope'
-            params['inSR'] = '4326'
-            params['outSR'] = '4326'
 
         encode = urllib.parse.urlencode(params)
         return encode
@@ -55,7 +55,7 @@ class Umi:
         return r
 
     def get_inventory(self, path):
-        url = self.base_url + path + '?f=json&token=' + self.token
+        url = self.base_url + path + '?f=json&inSR=4326&outSR=4326&token=' + self.token
         r = self.session.get(url, headers=self.headers)
 
         return r
@@ -102,16 +102,23 @@ class Umi:
                     params['geometry'] = ",".join(map(str, (x, y, x+Umi.AREA_SIZE, y+Umi.AREA_SIZE)))
                     r = self.get(path + '/query', params, True)
 
+                    r = r.json()
+
+                    if 'exceededTransferLimit' in r:
+                        print('¥n----exceed liimts---')
+
                     if result is None:
-                        result = r.json()
+                        result = r
                     else:
-                        features = r.json()['features']
+                        features = r['features']
 
                         if len(features) != 0:
                             result['features'].extend(features)
         else:
             r = self.get(path + '/query', params, True)
             result = r.json()
+            if 'exceededTransferLimit' in result:
+                print('¥n----exceed liimts---')
 
         return result
 
@@ -269,8 +276,10 @@ class Umi:
 
 
 if __name__ == '__main__':
-
     Umi.save_info('obstacle')
+    #Umi.save_info('safety_notice')
+    '''
+
     Umi.save_info('light_house')
     Umi.save_info('float_lights')
     Umi.save_info('pillar_lights')
@@ -281,8 +290,9 @@ if __name__ == '__main__':
     Umi.save_info('fisher_fix_net')
     Umi.save_info('marina')
     Umi.save_info('swimming_beach')
-   #Umi.save_info('safety_notice')
+
 #    Umi.save_info('tide_probe')
+'''
 
 
 
