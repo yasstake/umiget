@@ -31,98 +31,98 @@ class MyTestCase(unittest.TestCase):
     def test_get_lights(self):
         umi = Umi()
         umi.login()
-
-        print(umi.get_light_house(False))
+        r = self.umi.get_light_house()
+        print(r)
         umi.logout()
 
     def test_get_obstacle(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_obstacle(False)
+        r = self.umi.get_obstacle()
         print(r)
         self.umi.logout()
 
     def test_get_light_house(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_light_house(False)
+        r = self.umi.get_light_house()
         print(r)
         self.umi.logout()
 
     def test_get_float_lights(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_float_lights(False)
+        r = self.umi.get_float_lights()
         print(r)
         self.umi.logout()
 
     def test_get_pillar_lights(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_pillar_lights(False)
+        r = self.umi.get_pillar_lights()
         print(r)
         self.umi.logout()
 
     def test_get_other_lights(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_other_lights(False)
+        r = self.umi.get_other_lights()
         print(r)
         self.umi.logout()
 
     def test_get_traffic_route_major(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_traffic_route_major(False)
+        r = self.umi.get_traffic_route_major()
         print(r)
         self.umi.logout()
 
     def test_get_traffic_route_minor(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_traffic_route_minor(False)
+        r = self.umi.get_traffic_route_minor()
         print(r)
         self.umi.logout()
 
     def test_get_fisher(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_fisher(False)
+        r = self.umi.get_fisher()
         print(r)
         self.umi.logout()
 
     def test_get_fisher_fix_net(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_fisher_fix_net(False)
+        r = self.umi.get_fisher_fix_net()
         print(r)
         self.umi.logout()
 
     def test_get_marina(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_marina(False)
+        r = self.umi.get_marina()
         print(r)
         self.umi.logout()
 
     def test_get_swimming_beach(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_swimming_beach(False)
+        r = self.umi.get_swimming_beach()
         print(r)
         self.umi.logout()
 
     def test_get_tide_probe(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_tide_probe(False)
+        r = self.umi.get_tide_probe()
         print(r)
         self.umi.logout()
 
     def test_get_safety_notice(self):
         self.umi = Umi()
         self.umi.login()
-        r = self.umi.get_safety_notice(False)
+        r = self.umi.get_safety_notice()
         print(r)
         self.umi.logout()
 

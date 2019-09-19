@@ -14,6 +14,7 @@ from arcgis2geojson import arcgis2geojson
 
 class Umi:
     LAYER_LIST = 'https://www.msil.go.jp/msilgisapi/api/layer/layer'
+    REQUEST_WAIT = 0.5
 
     def __init__(self):
         self.session = HTMLSession()
@@ -46,6 +47,7 @@ class Umi:
             params['geometryType'] = 'esriGeometryEnvelope'
 
         encode = urllib.parse.urlencode(params)
+
         return encode
 
     def get(self, path, params, query=True):
@@ -77,181 +79,196 @@ class Umi:
 
     AREA_SIZE = 10
 
-    def query_data(self, path, loop=True, all_data=True, query_extent=None):
+    def query_data(self, path, all_data=True):
         r = self.get_inventory(path)
         extent, fields = self.parse_inventory(r.text)
 
-        if query_extent:
-            extent = query_extent
-
-        print(extent)
+        print(extent, fields)
 
         params = {}
-        params['geometry'] = ",".join(map(str, extent))
+
         if all_data:
             params['outFields'] = ",".join(map(str, fields))
 
-        result = None
+        result = self.query_data_with_extent(path + '/query', params,
+                      int(extent[0]-1), int(extent[1]-1), int(extent[2]+1), int(extent[3]+1))
 
-        if loop:
-            for x in range(int(extent[0]), int(extent[2])+Umi.AREA_SIZE, Umi.AREA_SIZE):
-                for y in range(int(extent[1]), int(extent[3])+Umi.AREA_SIZE, Umi.AREA_SIZE):
-                    print(x, y)
+        return result
 
-                    sleep(0.5)
-                    params['geometry'] = ",".join(map(str, (x, y, x+Umi.AREA_SIZE, y+Umi.AREA_SIZE)))
-                    r = self.get(path + '/query', params, True)
+    def query_data_with_extent(self, path, params, x0, y0, x1, y1):
+        params['geometry'] = ",".join(map(str, (x0, y0, x1, y1)))
+        print(path, params)
+        r = self.get(path, params, True)
+        print(r)
+        result = r.json()
 
-                    r = r.json()
+        if 'exceededTransferLimit' not in result:
+            return result
 
-                    if 'exceededTransferLimit' in r:
-                        print('¥n----exceed liimts---')
+        # retry with divide 4 area
+        dx = int((x1 - x0)/2)
+        dy = int((y1 - y0)/2)
 
-                    if result is None:
-                        result = r
-                    else:
-                        features = r['features']
+        x00 = x0
+        y00 = y0
+        x01 = x0 + dx
+        y01 = y0 + dy
+        x02 = x1
+        y02 = y1
 
-                        if len(features) != 0:
-                            result['features'].extend(features)
-        else:
-            r = self.get(path + '/query', params, True)
-            result = r.json()
-            if 'exceededTransferLimit' in result:
-                print('¥n----exceed liimts---')
+        sleep(Umi.REQUEST_WAIT)
+        result = self.query_data_with_extent(path, params, x00, y00, x01, y01)
+
+        sleep(Umi.REQUEST_WAIT)
+        r = self.query_data_with_extent(path, params, x00, y01, x01, y02)
+        features = r['features']
+        if len(features) != 0:
+            result['features'].extend(features)
+
+        sleep(Umi.REQUEST_WAIT)
+        r = self.query_data_with_extent(path, params, x01, y00, x02, y01)
+        features = r['features']
+        if len(features) != 0:
+            result['features'].extend(features)
+
+        sleep(Umi.REQUEST_WAIT)
+        r = self.query_data_with_extent(path, params, x01, y01, x02, y02)
+        features = r['features']
+        if len(features) != 0:
+            result['features'].extend(features)
 
         return result
 
     def logout(self):
         self.session.close()
 
-    def get_obstacle(self, loop=True):
+    def get_obstacle(self):
         '''
         海底障害物
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/9', loop, False)
+        r = self.query_data('Maritime/MapServer/9')
 
         return r
 
-    def get_light_house(self, loop=True):
+    def get_light_house(self):
         '''
         灯台
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/15', loop)
+        r = self.query_data('Maritime/MapServer/15')
 
         return r
 
-    def get_float_lights(self, loop=True):
+    def get_float_lights(self):
         '''
         灯浮標
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/16', loop)
+        r = self.query_data('Maritime/MapServer/16')
 
         return r
 
-    def get_pillar_lights(self, loop=True):
+    def get_pillar_lights(self):
         '''
         灯標
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/17', loop)
+        r = self.query_data('Maritime/MapServer/17')
 
         return r
 
-    def get_other_lights(self, loop=True):
+    def get_other_lights(self):
         '''
         灯(その他)
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/18', loop)
+        r = self.query_data('Maritime/MapServer/18')
 
         return r
 
-    def get_traffic_route_major(self, loop=True):
+    def get_traffic_route_major(self):
         '''
         海交法航路
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/20', loop)
+        r = self.query_data('Maritime/MapServer/20')
 
         return r
 
-    def get_traffic_route_minor(self, loop=True):
+    def get_traffic_route_minor(self):
         '''
         港測法航路
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/21', loop)
+        r = self.query_data('Maritime/MapServer/21')
 
         return r
 
-    def get_fisher(self, loop=True):
+    def get_fisher(self):
         '''
         漁港
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/32', loop)
+        r = self.query_data('Maritime/MapServer/32')
 
         return r
 
-    def get_fisher_fix_net(self, loop=True):
+    def get_fisher_fix_net(self):
         '''
         低地漁業権
         :param loop:
         :return:
         '''
-        r = self.query_data('Society/MapServer/7', loop)
+        r = self.query_data('Society/MapServer/7')
 
         return r
 
-    def get_marina(self, loop=True):
+    def get_marina(self):
         '''
         マリーナ
         :param loop:
         :return:
         '''
-        r = self.query_data('Society/MapServer/5', loop)
+        r = self.query_data('Society/MapServer/5')
 
         return r
 
-    def get_swimming_beach(self, loop=True):
+    def get_swimming_beach(self):
         '''
         海水浴場
         :param loop:
         :return:
         '''
-        r = self.query_data('Society/MapServer/3', loop)
+        r = self.query_data('Society/MapServer/3')
 
         return r
 
-    def get_tide_probe(self, loop=True):
+    def get_tide_probe(self):
         '''
         潮汐観測所
         :param loop:
         :return:
         '''
-        r = self.query_data('Ocean/MapServer/184', loop)
+        r = self.query_data('Ocean/MapServer/184')
 
         return r
 
-    def get_safety_notice(self, loop=True):
+    def get_safety_notice(self):
         '''
         海上安全通報
         :param loop:
         :return:
         '''
-        r = self.query_data('SafetyInfo1/MapServer/4', loop)
+        r = self.query_data('SafetyInfo1/MapServer/4')
 
         return r
 
@@ -261,13 +278,12 @@ class Umi:
     
     '''
 
-
     @staticmethod
     def save_info(data_name):
         umi = Umi()
         umi.login()
 
-        r = eval('umi.get_' + data_name + '(True)')
+        r = eval('umi.get_' + data_name + '()')
         r = arcgis2geojson(r)
         with open('data/' + data_name + '.json', mode='w', encoding='utf-8') as f:
             f.write(json.dumps(r, ensure_ascii=False))
@@ -276,11 +292,20 @@ class Umi:
 
 
 if __name__ == '__main__':
-    Umi.save_info('obstacle')
-    #Umi.save_info('safety_notice')
+    Umi.save_info('light_house')
+
+    umi = Umi()
+    umi.login()
+    r = umi.get_light_house()
+    print(r)
+    umi.logout()
+
+
+#    Umi.save_info('safety_notice')
+#    Umi.save_info('obstacle')
+
     '''
 
-    Umi.save_info('light_house')
     Umi.save_info('float_lights')
     Umi.save_info('pillar_lights')
     Umi.save_info('other_lights')
