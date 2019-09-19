@@ -292,31 +292,24 @@ class Umi:
 
 
 if __name__ == '__main__':
-    Umi.save_info('light_house')
+    Umi.save_info('safety_notice')
 
-    umi = Umi()
-    umi.login()
-    r = umi.get_light_house()
-    print(r)
-    umi.logout()
+#    Umi.save_info('swimming_beach')
+#    Umi.save_info('marina')
+#    Umi.save_info('fisher_fix_net')
+#    Umi.save_info('fisher')
+#    Umi.save_info('traffic_route_minor')
+#    Umi.save_info('traffic_route_major')
+#    Umi.save_info('other_lights')
+#    Umi.save_info('pillar_lights')
+#    Umi.save_info('float_lights')
+#    Umi.save_info('light_house')
 
 
-#    Umi.save_info('safety_notice')
-#    Umi.save_info('obstacle')
 
-    '''
-
-    Umi.save_info('float_lights')
-    Umi.save_info('pillar_lights')
-    Umi.save_info('other_lights')
-    Umi.save_info('traffic_route_major')
-    Umi.save_info('traffic_route_minor')
-    Umi.save_info('fisher')
-    Umi.save_info('fisher_fix_net')
-    Umi.save_info('marina')
-    Umi.save_info('swimming_beach')
-
-#    Umi.save_info('tide_probe')
+'''
+    Umi.save_info('obstacle')
+    Umi.save_info('tide_probe')
 '''
 
 
