@@ -52,12 +52,14 @@ class Umi:
 
     def get(self, path, params, query=True):
         url = self.base_url + path + '?' + self.make_params(params, query)
+        print('get->', url, self.headers)
         r = self.session.get(url, headers=self.headers)
 
         return r
 
     def get_inventory(self, path):
         url = self.base_url + path + '?f=json&inSR=4326&outSR=4326&token=' + self.token
+        print('url->', url)
         r = self.session.get(url, headers=self.headers)
 
         return r
@@ -97,17 +99,19 @@ class Umi:
 
     def query_data_with_extent(self, path, params, x0, y0, x1, y1):
         params['geometry'] = ",".join(map(str, (x0, y0, x1, y1)))
-        print(path, params)
+        print('get geometry', x0, ' ', y0, ' ', x1, ' ', y1)
         r = self.get(path, params, True)
         print(r)
         result = r.json()
 
         if 'exceededTransferLimit' not in result:
+            print('DataLimit OK')
             return result
 
+        print('RETRY 4 area')
         # retry with divide 4 area
-        dx = int((x1 - x0)/2)
-        dy = int((y1 - y0)/2)
+        dx = int((x1 - x0)*5) / 10
+        dy = int((y1 - y0)*5) / 10
 
         x00 = x0
         y00 = y0
@@ -148,7 +152,7 @@ class Umi:
         :param loop:
         :return:
         '''
-        r = self.query_data('Maritime/MapServer/9')
+        r = self.query_data('Maritime/MapServer/9', all_data=False)
 
         return r
 
@@ -224,7 +228,7 @@ class Umi:
 
     def get_fisher_fix_net(self):
         '''
-        低地漁業権
+        定置漁業権
         :param loop:
         :return:
         '''
@@ -252,6 +256,29 @@ class Umi:
 
         return r
 
+
+    def get_wrected_ship_point(self):
+        '''
+        海水浴場
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('Maritime/MapServer/4')
+
+        return r
+
+    def get_wrected_ship_area(self):
+        '''
+        海水浴場
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('Maritime/MapServer/5')
+
+        return r
+
+
+
     def get_tide_probe(self):
         '''
         潮汐観測所
@@ -262,21 +289,47 @@ class Umi:
 
         return r
 
-    def get_safety_notice(self):
+    def get_safety_notice1(self):
         '''
         海上安全通報
         :param loop:
         :return:
         '''
+        r = self.query_data('SafetyInfo1/MapServer/1')
+
+        return r
+
+    def get_safety_notice2(self):
+        '''
+        海上安全通報
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('SafetyInfo1/MapServer/2')
+
+        return r
+
+    def get_safety_notice3(self):
+        '''
+        海上安全通報
+        :param loop:
+        :return:
+        '''
+        r = self.query_data('SafetyInfo1/MapServer/3')
+
+        return r
+
+    def get_safety_notice4(self):
+        '''
+        海上安全通報
+        :param loop:
+        :return:
+        SafetyInfo1/MapServer/4  水路通報
+        '''
         r = self.query_data('SafetyInfo1/MapServer/4')
 
         return r
 
-
-    '''
-    SafetyInfo1/MapServer/4  水路通報
-    
-    '''
 
     @staticmethod
     def save_info(data_name):
@@ -292,10 +345,22 @@ class Umi:
 
 
 if __name__ == '__main__':
-    Umi.save_info('safety_notice')
+    Umi.save_info('safety_notice1')
+    Umi.save_info('safety_notice2')
+    Umi.save_info('safety_notice3')
+    Umi.save_info('safety_notice4')
+#    Umi.save_info('obstacle')
+#    Umi.save_info('wrected_ship_point')
+#    Umi.save_info('wrected_ship_area')
 
-#    Umi.save_info('swimming_beach')
+
+
+
+
+
 #    Umi.save_info('marina')
+#    Umi.save_info('swimming_beach')
+
 #    Umi.save_info('fisher_fix_net')
 #    Umi.save_info('fisher')
 #    Umi.save_info('traffic_route_minor')
@@ -308,7 +373,7 @@ if __name__ == '__main__':
 
 
 '''
-    Umi.save_info('obstacle')
+
     Umi.save_info('tide_probe')
 '''
 
