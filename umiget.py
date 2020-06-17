@@ -345,10 +345,11 @@ class Umi:
 
 
 if __name__ == '__main__':
-    Umi.save_info('safety_notice1')
-    Umi.save_info('safety_notice2')
-    Umi.save_info('safety_notice3')
-    Umi.save_info('safety_notice4')
+    Umi.save_info('marina')
+#    Umi.save_info('safety_notice1')
+#    Umi.save_info('safety_notice2')
+#    Umi.save_info('safety_notice3')
+#    Umi.save_info('safety_notice4')
 #    Umi.save_info('obstacle')
 #    Umi.save_info('wrected_ship_point')
 #    Umi.save_info('wrected_ship_area')
@@ -358,7 +359,7 @@ if __name__ == '__main__':
 
 
 
-#    Umi.save_info('marina')
+
 #    Umi.save_info('swimming_beach')
 
 #    Umi.save_info('fisher_fix_net')
