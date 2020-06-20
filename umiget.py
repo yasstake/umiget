@@ -1,3 +1,4 @@
+import ssl
 
 from requests_html import HTMLSession
 import urllib
@@ -5,19 +6,23 @@ import json
 from time import sleep
 '''
 See request_html docummentation at;
-https://html.python-requests.org/
+https://requests.readthedocs.io/projects/requests-html/en/latest/
+
+pipenv install requests-html
 '''
 
 #https://github.com/chris48s/arcgis2geojson
 #pip install arcgis2geojson
+
 from arcgis2geojson import arcgis2geojson
+
 
 class Umi:
     LAYER_LIST = 'https://www.msil.go.jp/msilgisapi/api/layer/layer'
     REQUEST_WAIT = 0.5
 
     def __init__(self):
-        self.session = HTMLSession()
+        self.session = HTMLSession(verify=False)
         self.headers = {'Content-Type': 'application/json', 'Origin': 'https://www.msil.go.jp',
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) Chrome/74.0.3729.131 Safari/537.36',
                         'X-Requested-With':'XMLHttpRequest'}
@@ -341,11 +346,28 @@ class Umi:
         with open('data/' + data_name + '.json', mode='w', encoding='utf-8') as f:
             f.write(json.dumps(r, ensure_ascii=False))
 
+            '''
+            features = r['features']
+
+            for feature in features:
+                f.write(json.dumps(feature, ensure_ascii=False))
+                f.write('\n')
+            '''
+
         umi.logout()
 
 
 if __name__ == '__main__':
     Umi.save_info('marina')
+    Umi.save_info('fisher_fix_net')
+    Umi.save_info('fisher')
+    Umi.save_info('traffic_route_minor')
+    Umi.save_info('traffic_route_major')
+    Umi.save_info('other_lights')
+    Umi.save_info('pillar_lights')
+    Umi.save_info('float_lights')
+    Umi.save_info('light_house')
+
 #    Umi.save_info('safety_notice1')
 #    Umi.save_info('safety_notice2')
 #    Umi.save_info('safety_notice3')
@@ -354,22 +376,8 @@ if __name__ == '__main__':
 #    Umi.save_info('wrected_ship_point')
 #    Umi.save_info('wrected_ship_area')
 
-
-
-
-
-
-
 #    Umi.save_info('swimming_beach')
 
-#    Umi.save_info('fisher_fix_net')
-#    Umi.save_info('fisher')
-#    Umi.save_info('traffic_route_minor')
-#    Umi.save_info('traffic_route_major')
-#    Umi.save_info('other_lights')
-#    Umi.save_info('pillar_lights')
-#    Umi.save_info('float_lights')
-#    Umi.save_info('light_house')
 
 
 
