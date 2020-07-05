@@ -34,7 +34,7 @@ def load(file):
 def process(file, filter, outfile):
     j = load(file)
 
-    with open(outfile, 'a') as f:
+    with open(outfile, 'w') as f:
         for line in j['features']:
             p = filter(line)
             f.write(json.dumps(p, ensure_ascii=False))
@@ -133,11 +133,11 @@ def other_lights_property(line, p=None):
 
 
 if __name__ == '__main__':
-    process('./data/marina.json', marina_property, 'out.json')
-    process('./data/fisher_fix_net.json', fisher_fixnet_property, 'out.json')
-    process('./data/float_lights.json', float_lights_property, 'out.json')
-    process('./data/light_house.json', light_house_property, 'out.json')
-    process('./data/other_lights.json', other_lights_property, 'out.json')
+    process('./data/marina.json', marina_property, 'marina.out.json')
+    process('./data/fisher_fix_net.json', fisher_fixnet_property, 'fisher_net.out.json')
+    process('./data/float_lights.json', float_lights_property, 'float.out.json')
+    process('./data/light_house.json', light_house_property, 'light_house.out.json')
+    process('./data/other_lights.json', other_lights_property, 'light.out.json')
 
 
 
