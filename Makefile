@@ -6,10 +6,11 @@ umiget:
 	python umiget.py
 
 
-convert:
+convert: land.tokyo.json
 	python convert.py
 	- rm seamap.mbtiles
-	tippecanoe --force -o seamap.mbtiles -L marina:marina.out.json -L fisher_net:fisher_net.out.json -L float:float.out.json -L light_house:light_house.out.json -L light:light.out.json --maximum-zoom=15 --minimum-zoom=7
+	tippecanoe -rg --force -o seamap.mbtiles -L marina:marina.out.json -L fisher_net:fisher_net.out.json -L float:float.out.json -L light_house:light_house.out.json -L light:light.out.json -L land:land.tokyo.json --maximum-zoom=14 --minimum-zoom=8 
+
 
 
 download:
@@ -23,8 +24,12 @@ unzip:
 geojson:
 	ogr2ogr -lco "ENCODING=UTF-8" -f geoJSON land.geojson ./land/land_polygons.shp
 
+
+land.tokyo.json:
+	python util/bbox.py > land.tokyo.json
+
 landtiles:
-	tippecanoe --force -o land.mbtiles land.geojson
+	tippecanoe -rg -z11 -z7 -C './filter/limit-tiles-to-bbox 138 35 141 32 $*' --force -o land.mbtiles land.geojson
 
 
 install_pip:
@@ -34,6 +39,5 @@ install_pip:
 install_mac:
 	brew install gdal
 	brew install tippercanoe
-
 
 
