@@ -1,6 +1,4 @@
 
-all:
-
 
 umiget:
 	python umiget.py
@@ -9,14 +7,21 @@ umiget:
 convert: land.tokyo.json
 	python convert.py
 	- rm seamap.mbtiles
-	tippecanoe -rg --force -o seamap.mbtiles -L marina:marina.out.json -L fisher_net:fisher_net.out.json -L float:float.out.json -L light_house:light_house.out.json -L light:light.out.json -L land:land.tokyo.json --maximum-zoom=14 --minimum-zoom=8 
-
-
+	tippecanoe -rg --force -o seamap.mbtiles \
+	           -L marina:marina.out.json -L fisher_net:fisher_net.out.json \
+	           -L float:float.out.json -L light_house:light_house.out.json \
+	           -L light:light.out.json -L land:land.tokyo.json \
+	           --maximum-zoom=14 --minimum-zoom=7
 
 download:
 	- rm -rf ./land
 	- mkdir  ./land
 	wget https://osmdata.openstreetmap.de/download/land-polygons-split-4326.zip
+
+
+download-japan:
+	wget http://download.geofabrik.de/asia/japan-latest.osm.pbf
+
 
 unzip:
 	unzip -oj land-polygons-split-4326.zip -d ./land

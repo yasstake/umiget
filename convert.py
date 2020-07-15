@@ -19,11 +19,11 @@ seamark:category=fishing
 '''
 
 
-SEAMARK_NS = 'seamark:'
+# SEAMARK_NS = 'seamark:'
+SEAMARK_NS = ''
 PROPERTIES = 'properties'
 
 SEAMARK_MARINA = ''
-
 
 def load(file):
     with open(file, 'r') as f:
