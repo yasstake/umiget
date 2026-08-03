@@ -133,7 +133,8 @@ def other_lights_property(line, p=None):
 
 
 if __name__ == '__main__':
-    process('./data/marina.json', marina_property, 'marina.out.json')
+    # マリーナは https://portal.msil.go.jp/msil-api-list の公開APIカタログに
+    # 掲載されておらず、umiget.py はもう marina.json を生成しないため対象外にしている。
     process('./data/fisher_fix_net.json', fisher_fixnet_property, 'fisher_net.out.json')
     process('./data/float_lights.json', float_lights_property, 'float.out.json')
     process('./data/light_house.json', light_house_property, 'light_house.out.json')

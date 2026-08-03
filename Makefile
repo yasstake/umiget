@@ -8,7 +8,7 @@ convert: land.tokyo.json
 	python convert.py
 	- rm seamap.mbtiles
 	tippecanoe -rg --force -o seamap.mbtiles \
-	           -L marina:marina.out.json -L fisher_net:fisher_net.out.json \
+	           -L fisher_net:fisher_net.out.json \
 	           -L float:float.out.json -L light_house:light_house.out.json \
 	           -L light:light.out.json -L land:land.tokyo.json \
 	           --maximum-zoom=14 --minimum-zoom=7
@@ -38,8 +38,7 @@ landtiles:
 
 
 install_pip:
-	python -m pip install requests-html
-	python -m pip install arcgis2geojson
+	python -m pip install requests
 
 install_mac:
 	brew install gdal

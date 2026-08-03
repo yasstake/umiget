@@ -1,365 +1,242 @@
-import ssl
-
-from requests_html import HTMLSession
-import urllib
 import json
-from time import sleep
+import os
+import time
+
+import requests
+
 '''
-See request_html docummentation at;
-https://requests.readthedocs.io/projects/requests-html/en/latest/
+海洋状況表示システム(海しる/MSIL) 公開API
 
-pipenv install requests-html
+https://portal.msil.go.jp/howtouse で案内されている、海上保安庁が公式に提供する
+サブスクリプションキー認証のREST API。旧来の www.msil.go.jp 内部エンドポイント
+(msilgisapi/msilwebtoken, arcgis/rest/services/Msil/...) はすべて廃止されているため、
+このAPIに全面的に移行した。
+
+URL構造の例(灯台):
+    https://api.msil.go.jp/lights/lighthouse/v2/MapServer/1/query?f=geojson&where=1=1
+
+認証はHTTPヘッダー `Ocp-Apim-Subscription-Key` にサブスクリプションキーを指定する。
+各データセットのパス・バージョン・レイヤー番号(LayerSelection)は、開発者ポータルの
+公開メタデータAPI (https://portal.msil.go.jp/mapi/apis, .../operations) から確認した。
+
+1回の応答は最大1000レコードで、超過時は "exceededTransferLimit": true が付与される。
+その場合は resultOffset を進めて追加リクエストする(ページネーション)。
+出力はGeoJSON(f=geojson)なので、常にWGS84経緯度で返り、座標系変換やArcGIS JSON
+からの変換(arcgis2geojson)は不要になった。
+
+マリーナ・海水浴場・潮汐観測所は、このAPIカタログ (https://portal.msil.go.jp/msil-api-list)
+には現時点で掲載されておらず、公式APIからは取得できない。
 '''
-
-#https://github.com/chris48s/arcgis2geojson
-#pip install arcgis2geojson
-
-from arcgis2geojson import arcgis2geojson
 
 
 class Umi:
-    LAYER_LIST = 'https://www.msil.go.jp/msilgisapi/api/layer/layer'
-    REQUEST_WAIT = 0.5
+    API_BASE = 'https://api.msil.go.jp/'
+    PAGE_SIZE = 1000
+    REQUEST_WAIT = 1.0  # 過度なアクセスを避けるため、APIへのリクエストは1秒間隔に制限する
 
-    def __init__(self):
-        self.session = HTMLSession(verify=False)
-        self.headers = {'Content-Type': 'application/json', 'Origin': 'https://www.msil.go.jp',
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) Chrome/74.0.3729.131 Safari/537.36',
-                        'X-Requested-With':'XMLHttpRequest'}
-        self.token = None
-        self.base_url = 'https://www.msil.go.jp/arcgis/rest/services/Msil/'
+    # https://portal.msil.go.jp/howtouse に掲載されている試用サブスクリプションキー。
+    # 利用者への通知なく停止・変更されることがあるため、本格利用時は
+    # https://portal.msil.go.jp から正式キーを申請し、環境変数 MSIL_API_KEY に設定すること。
+    TRIAL_KEY = '0e83ad5d93214e04abf37c970c32b641'
 
-    def login(self):
-        SESSION = 'https://www.msil.go.jp/msilgisapi/api/common/session'
-        r = self.session.post(SESSION, headers=self.headers)
+    # 名前 -> (パス, APIバージョン, レイヤー番号)
+    # レイヤー番号は https://portal.msil.go.jp/mapi/apis/<api-id>/operations で
+    # 確認した LayerSelection の有効値(点データ=1, 面データ=3 が多い)。
+    LAYERS = {
+        'light_house': ('lights/lighthouse', 'v2', 1),
+        'float_lights': ('lights/buoy', 'v2', 1),
+        'pillar_lights': ('lights/beacon', 'v2', 1),
+        'other_lights': ('lights/other', 'v2', 1),
+        'fisher': ('fishing-port-point', 'v2', 1),
+        'fisher_fix_net': ('fixed-gear-fishery-right2024', 'v2', 3),
+        'fisher_common_net': ('common-fishery-right2024', 'v2', 3),
+        'fisher_demarcated_net': ('demarcated-fishery-right2024', 'v2', 3),
+        'traffic_route_major': ('maritime-traffic-safety-act/traffic-route', 'v2', 3),
+        'traffic_route_minor': ('act-on-port-regulations/traffic-route', 'v2', 3),
+        'obstacle': ('seabed-obstruction', 'v2', 1),
+        'obstacle_area': ('seabed-obstruction', 'v2', 3),
+        'wrected_ship_point': ('wrecks', 'v2', 1),
+        'wrected_ship_area': ('wrecks', 'v2', 3),
+        # 水路通報・航行警報はレイヤー1〜3が存在するが、各番号が具体的に
+        # 何を指すかは未確認のため、デフォルト(1)のみを対象にしている。
+        'notices_to_mariners': ('notices-to-mariners', 'v2', 1),
+        'navigational_warnings': ('navigational-warnings', 'v2', 1),
+        'notices_to_mariners_en': ('notices-to-mariners-en', 'v2', 1),
+        'navigational_warnings_en': ('navigational-warnings-en', 'v2', 1),
+    }
 
-        TOKEN = 'https://www.msil.go.jp/msilwebtoken/api/token/new';
-        r = self.session.post(TOKEN, headers=self.headers)
+    def __init__(self, api_key=None):
+        self.session = requests.Session()
+        self.api_key = api_key or os.environ.get('MSIL_API_KEY', Umi.TRIAL_KEY)
+        self.headers = {'Ocp-Apim-Subscription-Key': self.api_key}
 
-        self.token = r.json()['token']
+    def get(self, name, params):
+        path, version, layer = Umi.LAYERS[name]
+        url = '{base}{path}/{version}/MapServer/{layer}/query'.format(
+            base=Umi.API_BASE, path=path, version=version, layer=layer)
 
-    def make_params(self, params, query=False):
-        if self.token:
-            params['token'] = self.token
-
-        params['f'] = 'json'
-        params['inSR'] = '4326'
-        params['outSR'] = '4326'
-
-        if query:
-            params['returnGeometry'] = 'true'
-            params['spatialRel'] = 'esriSpatialRelIntersects'
-            params['geometryType'] = 'esriGeometryEnvelope'
-
-        encode = urllib.parse.urlencode(params)
-
-        return encode
-
-    def get(self, path, params, query=True):
-        url = self.base_url + path + '?' + self.make_params(params, query)
-        print('get->', url, self.headers)
-        r = self.session.get(url, headers=self.headers)
+        time.sleep(Umi.REQUEST_WAIT)
+        print('get->', url, params)
+        r = self.session.get(url, headers=self.headers, params=params)
 
         return r
 
-    def get_inventory(self, path):
-        url = self.base_url + path + '?f=json&inSR=4326&outSR=4326&token=' + self.token
-        print('url->', url)
-        r = self.session.get(url, headers=self.headers)
+    def query_data(self, name, where='1=1'):
+        features = []
+        crs = None
+        offset = 0
 
-        return r
+        while True:
+            params = {
+                'f': 'geojson',
+                'where': where,
+                'returnGeometry': 'true',
+                'resultOffset': offset,
+            }
+            r = self.get(name, params)
+            r.raise_for_status()
+            result = r.json()
 
-    def parse_inventory(self, inventory):
-        j = json.loads(inventory)
+            page = result.get('features', [])
+            features.extend(page)
+            crs = result.get('crs', crs)
 
-        extent = j['extent']
-        extents = (extent['xmin'], extent['ymin'], extent['xmax'], extent['ymax'])
+            if not result.get('exceededTransferLimit') or not page:
+                break
 
-        fields = j['fields']
+            offset += len(page)
 
-        field = []
-        for f in fields:
-            if f['name'] != 'OBJECTID' and f['name'] != 'Shape':
-                field.append(f['name'])
-
-        return extents, field
-
-    AREA_SIZE = 10
-
-    def query_data(self, path, all_data=True):
-        r = self.get_inventory(path)
-        extent, fields = self.parse_inventory(r.text)
-
-        print(extent, fields)
-
-        params = {}
-
-        if all_data:
-            params['outFields'] = ",".join(map(str, fields))
-
-        result = self.query_data_with_extent(path + '/query', params,
-                      int(extent[0]-1), int(extent[1]-1), int(extent[2]+1), int(extent[3]+1))
-
-        return result
-
-    def query_data_with_extent(self, path, params, x0, y0, x1, y1):
-        params['geometry'] = ",".join(map(str, (x0, y0, x1, y1)))
-        print('get geometry', x0, ' ', y0, ' ', x1, ' ', y1)
-        r = self.get(path, params, True)
-        print(r)
-        result = r.json()
-
-        if 'exceededTransferLimit' not in result:
-            print('DataLimit OK')
-            return result
-
-        print('RETRY 4 area')
-        # retry with divide 4 area
-        dx = int((x1 - x0)*5) / 10
-        dy = int((y1 - y0)*5) / 10
-
-        x00 = x0
-        y00 = y0
-        x01 = x0 + dx
-        y01 = y0 + dy
-        x02 = x1
-        y02 = y1
-
-        sleep(Umi.REQUEST_WAIT)
-        result = self.query_data_with_extent(path, params, x00, y00, x01, y01)
-
-        sleep(Umi.REQUEST_WAIT)
-        r = self.query_data_with_extent(path, params, x00, y01, x01, y02)
-        features = r['features']
-        if len(features) != 0:
-            result['features'].extend(features)
-
-        sleep(Umi.REQUEST_WAIT)
-        r = self.query_data_with_extent(path, params, x01, y00, x02, y01)
-        features = r['features']
-        if len(features) != 0:
-            result['features'].extend(features)
-
-        sleep(Umi.REQUEST_WAIT)
-        r = self.query_data_with_extent(path, params, x01, y01, x02, y02)
-        features = r['features']
-        if len(features) != 0:
-            result['features'].extend(features)
-
-        return result
+        return {'type': 'FeatureCollection', 'features': features, 'crs': crs}
 
     def logout(self):
         self.session.close()
 
     def get_obstacle(self):
         '''
-        海底障害物
-        :param loop:
-        :return:
+        海底障害物(point)
         '''
-        r = self.query_data('Maritime/MapServer/9', all_data=False)
+        return self.query_data('obstacle')
 
-        return r
+    def get_obstacle_area(self):
+        '''
+        海底障害物(polygon)
+        '''
+        return self.query_data('obstacle_area')
 
     def get_light_house(self):
         '''
         灯台
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/15')
-
-        return r
+        return self.query_data('light_house')
 
     def get_float_lights(self):
         '''
         灯浮標
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/16')
-
-        return r
+        return self.query_data('float_lights')
 
     def get_pillar_lights(self):
         '''
         灯標
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/17')
-
-        return r
+        return self.query_data('pillar_lights')
 
     def get_other_lights(self):
         '''
         灯(その他)
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/18')
-
-        return r
+        return self.query_data('other_lights')
 
     def get_traffic_route_major(self):
         '''
         海交法航路
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/20')
-
-        return r
+        return self.query_data('traffic_route_major')
 
     def get_traffic_route_minor(self):
         '''
-        港測法航路
-        :param loop:
-        :return:
+        港則法航路
         '''
-        r = self.query_data('Maritime/MapServer/21')
-
-        return r
+        return self.query_data('traffic_route_minor')
 
     def get_fisher(self):
         '''
         漁港
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Maritime/MapServer/32')
-
-        return r
+        return self.query_data('fisher')
 
     def get_fisher_fix_net(self):
         '''
         定置漁業権
-        :param loop:
-        :return:
         '''
-        r = self.query_data('Society/MapServer/7')
+        return self.query_data('fisher_fix_net')
 
-        return r
-
-    def get_marina(self):
+    def get_fisher_common_net(self):
         '''
-        マリーナ
-        :param loop:
-        :return:
+        共同漁業権
         '''
-        r = self.query_data('Society/MapServer/5')
+        return self.query_data('fisher_common_net')
 
-        return r
-
-    def get_swimming_beach(self):
+    def get_fisher_demarcated_net(self):
         '''
-        海水浴場
-        :param loop:
-        :return:
+        区画漁業権
         '''
-        r = self.query_data('Society/MapServer/3')
-
-        return r
-
+        return self.query_data('fisher_demarcated_net')
 
     def get_wrected_ship_point(self):
         '''
-        海水浴場
-        :param loop:
-        :return:
+        沈船(point)
         '''
-        r = self.query_data('Maritime/MapServer/4')
-
-        return r
+        return self.query_data('wrected_ship_point')
 
     def get_wrected_ship_area(self):
         '''
-        海水浴場
-        :param loop:
-        :return:
+        沈船(polygon)
         '''
-        r = self.query_data('Maritime/MapServer/5')
+        return self.query_data('wrected_ship_area')
 
-        return r
-
-
-
-    def get_tide_probe(self):
+    def get_notices_to_mariners(self):
         '''
-        潮汐観測所
-        :param loop:
-        :return:
+        水路通報
         '''
-        r = self.query_data('Ocean/MapServer/184')
+        return self.query_data('notices_to_mariners')
 
-        return r
-
-    def get_safety_notice1(self):
+    def get_navigational_warnings(self):
         '''
-        海上安全通報
-        :param loop:
-        :return:
+        航行警報
         '''
-        r = self.query_data('SafetyInfo1/MapServer/1')
+        return self.query_data('navigational_warnings')
 
-        return r
-
-    def get_safety_notice2(self):
+    def get_notices_to_mariners_en(self):
         '''
-        海上安全通報
-        :param loop:
-        :return:
+        英文水路通報
         '''
-        r = self.query_data('SafetyInfo1/MapServer/2')
+        return self.query_data('notices_to_mariners_en')
 
-        return r
-
-    def get_safety_notice3(self):
+    def get_navigational_warnings_en(self):
         '''
-        海上安全通報
-        :param loop:
-        :return:
+        英文航行警報
         '''
-        r = self.query_data('SafetyInfo1/MapServer/3')
+        return self.query_data('navigational_warnings_en')
 
-        return r
-
-    def get_safety_notice4(self):
-        '''
-        海上安全通報
-        :param loop:
-        :return:
-        SafetyInfo1/MapServer/4  水路通報
-        '''
-        r = self.query_data('SafetyInfo1/MapServer/4')
-
-        return r
-
+    # マリーナ・海水浴場・潮汐観測所は https://portal.msil.go.jp/msil-api-list の
+    # 公開APIカタログに掲載されておらず、この公式APIからは取得できない。
 
     @staticmethod
     def save_info(data_name):
         umi = Umi()
-        umi.login()
 
         r = eval('umi.get_' + data_name + '()')
-        r = arcgis2geojson(r)
         with open('data/' + data_name + '.json', mode='w', encoding='utf-8') as f:
             f.write(json.dumps(r, ensure_ascii=False))
-
-            '''
-            features = r['features']
-
-            for feature in features:
-                f.write(json.dumps(feature, ensure_ascii=False))
-                f.write('\n')
-            '''
 
         umi.logout()
 
 
 if __name__ == '__main__':
-    Umi.save_info('marina')
     Umi.save_info('fisher_fix_net')
+    Umi.save_info('fisher_common_net')
+    Umi.save_info('fisher_demarcated_net')
     Umi.save_info('fisher')
     Umi.save_info('traffic_route_minor')
     Umi.save_info('traffic_route_major')
@@ -368,32 +245,9 @@ if __name__ == '__main__':
     Umi.save_info('float_lights')
     Umi.save_info('light_house')
 
-#    Umi.save_info('safety_notice1')
-#    Umi.save_info('safety_notice2')
-#    Umi.save_info('safety_notice3')
-#    Umi.save_info('safety_notice4')
 #    Umi.save_info('obstacle')
+#    Umi.save_info('obstacle_area')
 #    Umi.save_info('wrected_ship_point')
 #    Umi.save_info('wrected_ship_area')
-
-#    Umi.save_info('swimming_beach')
-
-
-
-
-'''
-
-    Umi.save_info('tide_probe')
-'''
-
-
-
-
-
-
-
-
-
-
-
-
+#    Umi.save_info('notices_to_mariners')
+#    Umi.save_info('navigational_warnings')

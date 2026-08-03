@@ -1,130 +1,165 @@
+import os
 import unittest
+from unittest.mock import patch, MagicMock
+
 from umiget import Umi
 
-INVENTRY_JSON='''
-{"currentVersion":10.6,"id":15,"name":"灯台","type":"Feature Layer","description":"","geometryType":"esriGeometryPoint","sourceSpatialReference":{"wkid":4326,"latestWkid":4326},"copyrightText":"","parentLayer":{"id":14,"name":"灯"},"subLayers":[],"minScale":0,"maxScale":0,"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriPMS","url":"74d8b54da02b5dd4e5d7d86cb0bd2f53","imageData":"iVBORw0KGgoAAAANSUhEUgAAACMAAAAYCAYAAABwZEQ3AAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAlNJREFUSInNlr1u4kAURk+kSFOw1aTBfoNIEUoEeYOkM5tUG/pI8AqRKOIg3EWiDkpDRwtOl0cIVn4eIFUUuqlobpUt7IDX2IAR2nBdWJ7xeM7cud833mWLYjfvAK112RgTbAOMbYwZAQ2g+9MwTnSvswUw9ehe3jQI5IOxExAbz04eGCfx/HMwSilbROJNG9+qJMxd1osiUk1p9pVSgYhYyQ6tdTevBcRhbKAKzH14QTgiktw+gMAYYwNrw3xGQHfMVLNOBFrrxjrGmFYzjSjFPoks1Wo1Wq0WvV4Pz/PmBiqlbkTENcbk5ciEIVqVDfjEVNTv9+l0OpRKpeSQMdAQEX8tikUwsagCI2LKsay5khoTZnAIPACf6xTvKjBJo0sLi/CscgGnSRPPePUIMgB8rXWwCtwymDSlZMV0W8eM+eDDeufdeePN8YwHML7n3r/Ul90ds5MKthAmxeggdN2k2tyovXqrbl1PvOsnnvgTXVdcMWFiFSnWMdS/+OKFl+CIo9+EKl4Ok/CQALghTHtSbdb3f46IuEBwzPHwkUdOOOFXdMXjkMPygMHojDN7FZgqs3p5IKyLT/hHbVNPMsaUmZmcr7WunJpTv0nTatNOnWCffYvYGZcJo5Qqi8jUOzJei3uSS+zg/Ab28Pxzzp0KlQXrDiMTplAo+CISLPOOWJbSzi6A6kAN3IpUrpMdzzwTKW0xTDRJHq/IhG5L261RC/bYGxYpMmHCK6/jCy4CzGyO3D/k68YBB77WumKMKSul7EKh4MdB/isMzLItIqRYBn8Bqf8BXNE3AI8AAAAASUVORK5CYII=","contentType":"image/png","width":26,"height":18,"angle":0,"xoffset":56,"yoffset":0},"label":"","description":""},"transparency":0,"labelingInfo":[{"labelPlacement":"esriServerPointLabelPlacementAboveRight","where":null,"labelExpression":"[名称]","useCodedValues":true,"symbol":{"type":"esriTS","color":[0,0,0,255],"backgroundColor":null,"borderLineColor":null,"borderLineSize":null,"verticalAlignment":"bottom","horizontalAlignment":"center","rightToLeft":false,"angle":0,"xoffset":0,"yoffset":0,"kerning":true,"haloColor":[255,255,255,255],"haloSize":1,"font":{"family":"MS UI Gothic","size":8,"style":"normal","weight":"normal","decoration":"none"}},"minScale":250000,"maxScale":0}]},"defaultVisibility":false,"extent":{"xmin":122.93441666700005,"ymin":20.40138888900003,"xmax":147.9173333330001,"ymax":45.52161111100003,"spatialReference":{"wkid":4326,"latestWkid":4326}},"hasAttachments":false,"htmlPopupType":"esriServerHTMLPopupTypeAsHTMLText","displayField":"名称","typeIdField":null,"subtypeFieldName":null,"fields":[{"name":"OBJECTID","type":"esriFieldTypeOID","alias":"OBJECTID","domain":null},{"name":"Shape","type":"esriFieldTypeGeometry","alias":"Shape","domain":null},{"name":"航路標識番号","type":"esriFieldTypeDouble","alias":"航路標識番号","domain":null},{"name":"灯フラグ","type":"esriFieldTypeDouble","alias":"灯フラグ","domain":null},{"name":"名称","type":"esriFieldTypeString","alias":"名称","length":255,"domain":null},{"name":"読み","type":"esriFieldTypeString","alias":"読み","length":255,"domain":null},{"name":"データ年度","type":"esriFieldTypeString","alias":"データ年度","length":255,"domain":null},{"name":"調査年度","type":"esriFieldTypeString","alias":"調査年度","length":255,"domain":null},{"name":"作成機関","type":"esriFieldTypeString","alias":"作成機関","length":255,"domain":null},{"name":"出典","type":"esriFieldTypeString","alias":"出典","length":255,"domain":null},{"name":"F9","type":"esriFieldTypeString","alias":"F9","length":255,"domain":null},{"name":"緯度","type":"esriFieldTypeDouble","alias":"緯度","domain":null},{"name":"F11","type":"esriFieldTypeString","alias":"F11","length":255,"domain":null},{"name":"経度","type":"esriFieldTypeDouble","alias":"経度","domain":null},{"name":"標識種別","type":"esriFieldTypeString","alias":"標識種別","length":255,"domain":null}],"indexes":[{"name":"FDO_OBJECTID","fields":"OBJECTID","isAscending":true,"isUnique":true,"description":""},{"name":"FDO_Shape","fields":"Shape","isAscending":true,"isUnique":false,"description":""}],"subtypes":[],"relationships":[],"canModifyLayer":true,"canScaleSymbols":false,"hasLabels":true,"capabilities":"Map,Query,Data","maxRecordCount":1000,"supportsStatistics":true,"supportsAdvancedQueries":true,"supportedQueryFormats":"JSON, AMF, geoJSON","ownershipBasedAccessControlForFeatures":{"allowOthersToQuery":true},"useStandardizedQueries":true,"advancedQueryCapabilities":{"useStandardizedQueries":true,"supportsStatistics":true,"supportsOrderBy":true,"supportsDistinct":true,"supportsPagination":true,"supportsTrueCurve":true,"supportsReturningQueryExtent":true,"supportsQueryWithDistance":true,"supportsSqlExpression":true},"supportsDatumTransformation":true}
-'''
 
-class MyTestCase(unittest.TestCase):
+class FakeResponse:
+    def __init__(self, data, status_code=200):
+        self._data = data
+        self.status_code = status_code
+
+    def json(self):
+        return self._data
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise Exception('HTTP {}'.format(self.status_code))
 
 
-    def test_umi_login(self):
+class UmiUnitTestCase(unittest.TestCase):
+    """ネットワークに一切アクセスしない、純粋なロジックのテスト。"""
+
+    @patch('umiget.time.sleep')
+    def test_get_builds_expected_url_and_headers(self, mock_sleep):
+        umi = Umi(api_key='test-key')
+        umi.session = MagicMock()
+        umi.session.get.return_value = FakeResponse({'features': []})
+
+        umi.get('light_house', {'f': 'geojson', 'where': '1=1', 'resultOffset': 0})
+
+        args, kwargs = umi.session.get.call_args
+        self.assertEqual(args[0], 'https://api.msil.go.jp/lights/lighthouse/v2/MapServer/1/query')
+        self.assertEqual(kwargs['headers'], {'Ocp-Apim-Subscription-Key': 'test-key'})
+        self.assertEqual(kwargs['params']['where'], '1=1')
+        mock_sleep.assert_called_once_with(Umi.REQUEST_WAIT)
+
+    @patch('umiget.time.sleep')
+    def test_query_data_single_page(self, mock_sleep):
         umi = Umi()
-        umi.login()
+        expected_features = [{'type': 'Feature', 'properties': {}, 'geometry': None}]
 
-        print(umi.session)
-        print(umi.token)
+        with patch.object(umi, 'get', return_value=FakeResponse({'features': expected_features})):
+            result = umi.query_data('light_house')
 
-        umi.logout()
+        self.assertEqual(result['type'], 'FeatureCollection')
+        self.assertEqual(result['features'], expected_features)
 
-    def test_url_encoding(self):
+    @patch('umiget.time.sleep')
+    def test_query_data_paginates_with_result_offset(self, mock_sleep):
         umi = Umi()
-        umi.login()
-        print(umi.make_params({'a': 'b', 'c':'d'}))
-        umi.logout()
+        page1 = [{'id': i} for i in range(3)]
+        page2 = [{'id': i} for i in range(3, 5)]
+        calls = []
 
-    def test_parse_invetry(self):
+        def fake_get(name, params):
+            calls.append(dict(params))
+            if params['resultOffset'] == 0:
+                return FakeResponse({'features': page1, 'exceededTransferLimit': True})
+            return FakeResponse({'features': page2})
+
+        with patch.object(umi, 'get', side_effect=fake_get):
+            result = umi.query_data('light_house')
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0]['resultOffset'], 0)
+        self.assertEqual(calls[1]['resultOffset'], len(page1))
+        self.assertEqual(result['features'], page1 + page2)
+
+    @patch('umiget.time.sleep')
+    def test_query_data_stops_when_a_page_is_empty(self, mock_sleep):
+        """
+        exceededTransferLimit が true のままでも、ページが空になったら
+        resultOffset が進まず無限ループになるのを防ぐ回帰テスト。
+        """
         umi = Umi()
-        print(umi.parse_inventory(INVENTRY_JSON))
-        umi.logout()
+        call_count = {'n': 0}
 
-    def test_get_lights(self):
+        def fake_get(name, params):
+            call_count['n'] += 1
+            return FakeResponse({'features': [], 'exceededTransferLimit': True})
+
+        with patch.object(umi, 'get', side_effect=fake_get):
+            result = umi.query_data('light_house')
+
+        self.assertEqual(call_count['n'], 1)
+        self.assertEqual(result['features'], [])
+
+    @patch('umiget.time.sleep')
+    def test_query_data_raises_on_http_error(self, mock_sleep):
         umi = Umi()
-        umi.login()
-        r = self.umi.get_light_house()
-        print(r)
-        umi.logout()
 
-    def test_get_obstacle(self):
+        with patch.object(umi, 'get', return_value=FakeResponse({}, status_code=500)):
+            with self.assertRaises(Exception):
+                umi.query_data('light_house')
+
+
+@unittest.skipUnless(
+    os.environ.get('UMIGET_RUN_INTEGRATION') == '1',
+    'set UMIGET_RUN_INTEGRATION=1 to run tests that hit the live api.msil.go.jp API'
+)
+class UmiIntegrationTestCase(unittest.TestCase):
+    """https://api.msil.go.jp の実サーバーへアクセスする結合テスト。既定ではスキップされる。"""
+
+    def setUp(self):
         self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_obstacle()
-        print(r)
+
+    def tearDown(self):
         self.umi.logout()
+
+    def _assert_feature_collection(self, r):
+        self.assertIsInstance(r, dict)
+        self.assertIn('features', r)
+        self.assertIsInstance(r['features'], list)
 
     def test_get_light_house(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_light_house()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_light_house())
 
     def test_get_float_lights(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_float_lights()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_float_lights())
 
     def test_get_pillar_lights(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_pillar_lights()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_pillar_lights())
 
     def test_get_other_lights(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_other_lights()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_other_lights())
 
     def test_get_traffic_route_major(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_traffic_route_major()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_traffic_route_major())
 
     def test_get_traffic_route_minor(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_traffic_route_minor()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_traffic_route_minor())
 
     def test_get_fisher(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_fisher()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_fisher())
 
     def test_get_fisher_fix_net(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_fisher_fix_net()
-        print(r)
-        self.umi.logout()
+        self._assert_feature_collection(self.umi.get_fisher_fix_net())
 
-    def test_get_marina(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_marina()
-        print(r)
-        self.umi.logout()
+    def test_get_fisher_common_net(self):
+        self._assert_feature_collection(self.umi.get_fisher_common_net())
 
-    def test_get_swimming_beach(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_swimming_beach()
-        print(r)
-        self.umi.logout()
+    def test_get_fisher_demarcated_net(self):
+        self._assert_feature_collection(self.umi.get_fisher_demarcated_net())
 
-    def test_get_tide_probe(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_tide_probe()
-        print(r)
-        self.umi.logout()
+    def test_get_obstacle(self):
+        self._assert_feature_collection(self.umi.get_obstacle())
 
-    def test_get_safety_notice(self):
-        self.umi = Umi()
-        self.umi.login()
-        r = self.umi.get_safety_notice()
-        print(r)
-        self.umi.logout()
+    def test_get_obstacle_area(self):
+        self._assert_feature_collection(self.umi.get_obstacle_area())
+
+    def test_get_wrected_ship_point(self):
+        self._assert_feature_collection(self.umi.get_wrected_ship_point())
+
+    def test_get_wrected_ship_area(self):
+        self._assert_feature_collection(self.umi.get_wrected_ship_area())
+
+    def test_get_notices_to_mariners(self):
+        self._assert_feature_collection(self.umi.get_notices_to_mariners())
+
+    def test_get_navigational_warnings(self):
+        self._assert_feature_collection(self.umi.get_navigational_warnings())
 
 
 if __name__ == '__main__':
