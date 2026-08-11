@@ -38,6 +38,14 @@ pip install requests shapely
 python umiget.py
 ```
 
+APIレスポンスは `./cache` ディレクトリにディスクキャッシュされ、同じURL・
+パラメータへの2回目以降のリクエストはAPIへアクセスせずキャッシュから読み込まれます。
+APIの最新データを取得し直したい場合は `--refresh` を指定してください。
+
+```
+python umiget.py --refresh
+```
+
 `data/` ディレクトリ以下に、各データセットのGeoJSONファイル(`<データ名>.json`)が
 保存されます。既定では以下のデータセットを取得します。
 
@@ -121,6 +129,72 @@ python convert.py --kml
 生成された `.kml` ファイルは、Google Earthの「ファイル > 開く」からそのまま
 読み込めます。
 
+## GPXトラックの活用: gpx_to_track_kml.py / gpx_to_interval_kml.py / gpx_overlay_kml.py / gpx_to_earth_studio.py / gpx_pipeline.py
+
+GPXの航跡(トラック)ファイルから、Google Earth用の各種KMLやGoogle Earth Studio用の
+カメラアニメーションデータを生成する一連のスクリプトです。
+
+### 1. 航跡のアニメーションKML: gpx_to_track_kml.py
+
+```
+python gpx_to_track_kml.py track.gpx
+```
+
+`<trkpt>` の `<time>` を使い、Google Earth Proのタイムスライダーで時刻通りに
+矢印アイコンが動く `gx:Track` 形式のKMLを生成します(`-o` で出力先変更)。
+始点/終点にはSTART/GOALのPlacemarkも立てます。
+
+### 2. 一定間隔ごとの時刻ラベル付きKML: gpx_to_interval_kml.py
+
+```
+python gpx_to_interval_kml.py track.gpx --interval 15
+```
+
+時計の00/15/30/45分(既定15分間隔)に最も近い実測点を選び、日本時間の時刻ラベル
+付きPlacemarkとして出力します。
+
+### 3. 海しるデータのオーバーレイKML: gpx_overlay_kml.py
+
+```
+python gpx_overlay_kml.py track.gpx --margin-km 10
+```
+
+GPXのバウンディングボックスを指定距離(既定10km)拡大した範囲で `data/*.json`
+(convert.pyが変換する全データセット)をクリップし、航跡ラインと合わせて1つの
+KMLにまとめます。件数が多い一部データセット(漁港名・共同漁業権・海交法/港則法航路)
+は既定で除外されます。`--no-regenerate` で `data/*.json` からのKML再生成を省略できます。
+
+### 4. Google Earth Studio用カメラデータ: gpx_to_earth_studio.py
+
+```
+python gpx_to_earth_studio.py track.gpx --duration 60 --tilt 60
+```
+
+GPXの実時間をアニメーションの尺(既定60秒)に等縮尺で圧縮し、進行方向を自動で
+向く追従カメラのキーフレームを生成します。出力は2種類:
+
+- `.esp`(既定出力): Earth Studioのプロジェクト保存形式。非公式フォーマットの
+  経験的な変換式を使用しているため実験的機能です(`--no-esp` で無効化)。
+- キーフレーム表CSV: `.esp` が開けない場合の保険として、数値をそのまま
+  手入力できる表(`--no-csv` で無効化)。
+
+主なオプション: `--altitude`(絶対高度で固定)/`--altitude-offset`(地形追従の
+オフセット、既定200m)、`--target-tracking`(Earth Studioの自動追尾に地点を
+狙わせる)、`--intro-sec`/`--outro-sec`(前後に静止区間を追加)。詳細は
+`--help` を参照してください。
+
+### 5. 上記3種類を一括生成: gpx_pipeline.py
+
+```
+python gpx_pipeline.py track.gpx
+```
+
+1本のGPXから、トラックKML・Earth Studioカメラデータ(`.esp`+CSV)・海しる
+オーバーレイKMLの3種類をまとめて生成します。Earth Studio側のパラメータは
+`gpx_pipeline.py` 内の `EARTH_STUDIO_DEFAULTS`(標高1500m一定・Tilt80度・
+キーフレーム10個・移動平均あり・前後5秒の静止区間)で固定されており、個別に
+調整したい場合は各スクリプトを直接実行してください。
+
 ## 範囲を指定した加工: gpx_bbox.py / kml_clip.py
 
 GPXファイルの範囲を調べたり、KMLファイルをその範囲で切り取ったりするための
@@ -175,7 +249,9 @@ python kml_clip.py data/light_house.kml tokyo_bay.kml $(python gpx_bbox.py track
 
 ```
 python3 -m unittest umiget_test.UmiUnitTestCase
-PYTHONPATH=. python3 -m unittest test.convert_test test.gpx_bbox_test test.kml_clip_test
+PYTHONPATH=. python3 -m unittest test.convert_test test.gpx_bbox_test test.kml_clip_test \
+    test.gpx_to_track_kml_test test.gpx_to_interval_kml_test test.gpx_overlay_kml_test \
+    test.gpx_to_earth_studio_test test.gpx_pipeline_test
 ```
 
 実際に海しるAPIへ接続する結合テストは、既定ではスキップされます。動作確認したい
