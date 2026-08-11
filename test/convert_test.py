@@ -1,4 +1,8 @@
+import os
+import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+
 import convert
 
 FISHER = {"type": "Feature", "geometry": {"type": "Point", "coordinates": [125.46577379000007, 24.72446440100009]}, "properties": {"漁港名": "保良", "読み": "ほら", "管理者": "宮古島市", "区域変更": 'null', "漁港種類": "第1種", "作成機関": "海上保安庁", "データ年度": "H24(2012)", "港則法適用": "×", "調査年度": "H24(2012)", "更新年月日": -2209161600000, "備考": 'null', "管区": "第十一管区海上保安本部", "IDK": 11, "利用者_漁協": "宮古島漁協", "出典・情報提供者": "沖縄県", "所在地": "沖縄県宮古島市城辺字保良(宮古島）"}}
@@ -35,6 +39,177 @@ class MyTestCase(unittest.TestCase):
         r = convert.fisher_fixnet_property(FISHER_NET)
         print(r)
 
+
+KML_NS = {'kml': convert.KML_NAMESPACE}
+
+
+class KmlConversionTestCase(unittest.TestCase):
+    """
+    geojson_to_kml() が返すのは xmlns 属性を手動で設定しただけの、まだ
+    シリアライズしていない ElementTree なので、この時点ではタグは
+    名前空間なしの単純な文字列("Placemark"等)のまま。実際にファイルへ
+    書き出して読み直したときに初めて xmlns が名前空間として解決される
+    (test_save_kml_writes_valid_xml_file 参照)。
+    """
+
+    def test_point_geometry_and_name(self):
+        geojson = {'features': [LIGHT_HOUSE]}
+        kml = convert.geojson_to_kml(geojson)
+
+        placemark = kml.find('.//Placemark')
+        self.assertEqual(placemark.find('name').text, '女島灯台')
+
+        coords = placemark.find('Point/coordinates').text
+        self.assertEqual(coords, '128.34991666700012,31.99216666700005')
+
+    def test_polygon_with_hole_geometry(self):
+        geojson = {'features': [FISHER_NET]}
+        kml = convert.geojson_to_kml(geojson)
+
+        placemark = kml.find('.//Placemark')
+        polygon = placemark.find('Polygon')
+
+        self.assertIsNotNone(polygon.find('outerBoundaryIs'))
+        self.assertIsNotNone(polygon.find('innerBoundaryIs'))
+
+        # ラベル追加文字 が名前フィールド候補にヒットして名前になる
+        self.assertEqual(placemark.find('name').text, '雑魚')
+
+    def test_extended_data_contains_all_properties(self):
+        geojson = {'features': [FISHER]}
+        kml = convert.geojson_to_kml(geojson)
+
+        placemark = kml.find('.//Placemark')
+        data_names = {d.get('name') for d in placemark.findall('ExtendedData/Data')}
+
+        self.assertEqual(data_names, set(FISHER['properties'].keys()))
+
+    def test_name_field_priority_falls_back(self):
+        properties = {'読み': 'よみがな'}
+        name = convert._placemark_name(properties, convert.DEFAULT_NAME_FIELDS)
+
+        self.assertEqual(name, 'よみがな')
+
+    def test_name_field_missing_returns_empty(self):
+        name = convert._placemark_name({'foo': 'bar'}, convert.DEFAULT_NAME_FIELDS)
+
+        self.assertEqual(name, '')
+
+    def test_light_name_with_breakwater_keyword_is_blank(self):
+        properties = {'名称': '吉岡港第2西防波堤灯台'}
+        name = convert._placemark_name(properties, convert.DEFAULT_NAME_FIELDS)
+
+        self.assertEqual(name, '')
+
+    def test_fisher_name_with_breakwater_keyword_is_not_blank(self):
+        # 「防波堤」の抑制は名前フィールドが「名称」の場合のみ(灯台・灯標・灯・灯浮標)。
+        # 他のデータセット(例: 漁港名)には適用しない。
+        properties = {'漁港名': '防波堤漁港'}
+        name = convert._placemark_name(properties, convert.DEFAULT_NAME_FIELDS)
+
+        self.assertEqual(name, '防波堤漁港')
+
+    def test_point_geometry_with_breakwater_keyword_has_no_placemark_name(self):
+        light_house_with_breakwater = dict(LIGHT_HOUSE)
+        light_house_with_breakwater['properties'] = dict(LIGHT_HOUSE['properties'])
+        light_house_with_breakwater['properties']['名称'] = '吉岡港第2西防波堤灯台'
+
+        geojson = {'features': [light_house_with_breakwater]}
+        kml = convert.geojson_to_kml(geojson)
+
+        placemark = kml.find('.//Placemark')
+        self.assertIsNone(placemark.find('name'))
+
+    def test_save_kml_writes_valid_xml_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            infile = os.path.join(tmp, 'in.json')
+            outfile = os.path.join(tmp, 'out.kml')
+
+            with open(infile, 'w', encoding='utf-8') as f:
+                import json
+                json.dump({'features': [LIGHT_HOUSE, MAJOR_ROUTE]}, f)
+
+            convert.save_kml(infile, outfile)
+
+            tree = ET.parse(outfile)
+            placemarks = tree.findall('.//kml:Placemark', KML_NS)
+            self.assertEqual(len(placemarks), 2)
+
+    def test_style_adds_style_element_and_placemark_styleurl(self):
+        geojson = {'features': [FISHER_NET]}
+        style = convert.KML_STYLES['fisher_fix_net']
+
+        kml = convert.geojson_to_kml(geojson, style=style)
+
+        kml_style = kml.find('.//Style')
+        self.assertEqual(kml_style.get('id'), style['id'])
+        self.assertEqual(kml_style.find('PolyStyle/color').text, style['poly_color'])
+        self.assertEqual(kml_style.find('PolyStyle/fill').text, '1')
+        self.assertEqual(kml_style.find('LineStyle/color').text, style['line_color'])
+
+        placemark = kml.find('.//Placemark')
+        self.assertEqual(placemark.find('styleUrl').text, '#' + style['id'])
+
+    def test_kml_styles_use_expected_red_opacity(self):
+        # 定置漁業権: 赤、透過65%(不透明度35% -> alpha 255*0.35を丸めて59)
+        self.assertEqual(convert.KML_STYLES['fisher_fix_net']['poly_color'], '590000ff')
+        # 区画漁業権: 赤、透過75%(不透明度25% -> alpha 255*0.25を丸めて40)
+        self.assertEqual(convert.KML_STYLES['fisher_demarcated_net']['poly_color'], '400000ff')
+
+    def test_fisher_fix_net_has_thin_outline(self):
+        style = convert.KML_STYLES['fisher_fix_net']
+        kml = convert.geojson_to_kml({'features': [FISHER_NET]}, style=style)
+
+        kml_style = kml.find('.//Style')
+        self.assertEqual(kml_style.find('LineStyle/width').text, '1')
+        self.assertEqual(kml_style.find('PolyStyle/outline').text, '1')
+
+    def test_fisher_demarcated_net_has_no_outline(self):
+        style = convert.KML_STYLES['fisher_demarcated_net']
+        kml = convert.geojson_to_kml({'features': [FISHER_NET]}, style=style)
+
+        kml_style = kml.find('.//Style')
+        self.assertIsNone(kml_style.find('LineStyle'))
+        self.assertEqual(kml_style.find('PolyStyle/outline').text, '0')
+
+    def test_all_polygon_datasets_have_a_defined_style(self):
+        # スタイル(PolyStyleのcolor)未定義のPolygon/MultiPolygonデータセットは、
+        # Google EarthのデフォルトPolyStyle(不透明の白)で塗りつぶされてしまうため、
+        # 面データを持つデータセットには必ずKML_STYLESにpoly_colorを定義しておく。
+        polygon_datasets = ('fisher_fix_net', 'fisher_demarcated_net', 'fisher_common_net',
+                             'traffic_route_major', 'traffic_route_minor')
+        for name in polygon_datasets:
+            with self.subTest(dataset=name):
+                self.assertIn(name, convert.KML_STYLES)
+                self.assertIn('poly_color', convert.KML_STYLES[name])
+                # 先頭2桁はアルファ値。白({RGB}ffffff)そのものではないことを確認する。
+                self.assertNotEqual(convert.KML_STYLES[name]['poly_color'][2:], 'ffffff')
+
+    def test_icon_style_adds_icon_style_and_href(self):
+        geojson = {'features': [LIGHT_HOUSE]}
+        style = convert.KML_STYLES['light_house']
+
+        kml = convert.geojson_to_kml(geojson, style=style)
+
+        kml_style = kml.find('.//Style')
+        self.assertEqual(kml_style.get('id'), style['id'])
+        self.assertEqual(kml_style.find('IconStyle/Icon/href').text, style['icon'])
+        self.assertIsNone(kml_style.find('LineStyle'))
+        self.assertIsNone(kml_style.find('PolyStyle'))
+
+        placemark = kml.find('.//Placemark')
+        self.assertEqual(placemark.find('styleUrl').text, '#' + style['id'])
+
+    def test_light_icon_styles_are_visually_distinct(self):
+        # アイコン画像自体は使い回すことがあるため、(画像, 色, 大きさ)の組み合わせで区別できていればよい
+        light_names = ('light_house', 'pillar_lights', 'other_lights', 'float_lights')
+        appearances = {
+            (convert.KML_STYLES[name]['icon'],
+             convert.KML_STYLES[name].get('icon_color'),
+             convert.KML_STYLES[name].get('icon_scale'))
+            for name in light_names
+        }
+        self.assertEqual(len(appearances), len(light_names))
 
 
 if __name__ == '__main__':

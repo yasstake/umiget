@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -23,17 +24,48 @@ class UmiUnitTestCase(unittest.TestCase):
 
     @patch('umiget.time.sleep')
     def test_get_builds_expected_url_and_headers(self, mock_sleep):
-        umi = Umi(api_key='test-key')
-        umi.session = MagicMock()
-        umi.session.get.return_value = FakeResponse({'features': []})
+        with tempfile.TemporaryDirectory() as cache_dir:
+            umi = Umi(api_key='test-key', cache_dir=cache_dir)
+            umi.session = MagicMock()
+            umi.session.get.return_value = FakeResponse({'features': []})
 
-        umi.get('light_house', {'f': 'geojson', 'where': '1=1', 'resultOffset': 0})
+            umi.get('light_house', {'f': 'geojson', 'where': '1=1', 'resultOffset': 0})
 
-        args, kwargs = umi.session.get.call_args
-        self.assertEqual(args[0], 'https://api.msil.go.jp/lights/lighthouse/v2/MapServer/1/query')
-        self.assertEqual(kwargs['headers'], {'Ocp-Apim-Subscription-Key': 'test-key'})
-        self.assertEqual(kwargs['params']['where'], '1=1')
-        mock_sleep.assert_called_once_with(Umi.REQUEST_WAIT)
+            args, kwargs = umi.session.get.call_args
+            self.assertEqual(args[0], 'https://api.msil.go.jp/lights/lighthouse/v2/MapServer/1/query')
+            self.assertEqual(kwargs['headers'], {'Ocp-Apim-Subscription-Key': 'test-key'})
+            self.assertEqual(kwargs['params']['where'], '1=1')
+            mock_sleep.assert_called_once_with(Umi.REQUEST_WAIT)
+
+    @patch('umiget.time.sleep')
+    def test_get_uses_cache_on_second_call(self, mock_sleep):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            umi = Umi(api_key='test-key', cache_dir=cache_dir)
+            umi.session = MagicMock()
+            umi.session.get.return_value = FakeResponse({'features': ['a']})
+
+            params = {'f': 'geojson', 'where': '1=1', 'resultOffset': 0}
+            r1 = umi.get('light_house', params)
+            r2 = umi.get('light_house', params)
+
+            umi.session.get.assert_called_once()
+            mock_sleep.assert_called_once_with(Umi.REQUEST_WAIT)
+            self.assertEqual(r1.json(), {'features': ['a']})
+            self.assertEqual(r2.json(), {'features': ['a']})
+
+    @patch('umiget.time.sleep')
+    def test_get_force_refresh_bypasses_cache(self, mock_sleep):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            umi = Umi(api_key='test-key', cache_dir=cache_dir)
+            umi.session = MagicMock()
+            umi.session.get.return_value = FakeResponse({'features': ['a']})
+
+            params = {'f': 'geojson', 'where': '1=1', 'resultOffset': 0}
+            umi.get('light_house', params)
+            umi.get('light_house', params, force_refresh=True)
+
+            self.assertEqual(umi.session.get.call_count, 2)
+            self.assertEqual(mock_sleep.call_count, 2)
 
     @patch('umiget.time.sleep')
     def test_query_data_single_page(self, mock_sleep):
@@ -53,7 +85,7 @@ class UmiUnitTestCase(unittest.TestCase):
         page2 = [{'id': i} for i in range(3, 5)]
         calls = []
 
-        def fake_get(name, params):
+        def fake_get(name, params, force_refresh=False):
             calls.append(dict(params))
             if params['resultOffset'] == 0:
                 return FakeResponse({'features': page1, 'exceededTransferLimit': True})
@@ -76,7 +108,7 @@ class UmiUnitTestCase(unittest.TestCase):
         umi = Umi()
         call_count = {'n': 0}
 
-        def fake_get(name, params):
+        def fake_get(name, params, force_refresh=False):
             call_count['n'] += 1
             return FakeResponse({'features': [], 'exceededTransferLimit': True})
 
